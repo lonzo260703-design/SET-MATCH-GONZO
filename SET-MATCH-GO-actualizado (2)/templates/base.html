@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>{% block title %}SET-MATCH-GO!{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  {% block extra_css %}{% endblock %}
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Roboto', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #223243;
+      color: #ffffff;
+      overflow-x: hidden;
+    }
+
+    /* NAVBAR BASE DESKTOP COMPLETAMENTE CORREGIDA */
+    .navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 40px;
+      background-color: #223243 !important;
+      color: #ffffff !important;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 70px;
+      z-index: 1000 !important;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+      overflow: visible !important; /* Permite que el mega menú se muestre sin cortarse */
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #ffffff !important; /* Texto blanco en logo */
+      text-decoration: none;
+      font-weight: bold;
+      font-size: 1.1rem;
+    }
+
+    /* LISTAS DE NAVEGACIÓN DESKTOP */
+    .nav-center,
+    .nav-right {
+      display: flex;
+      align-items: center;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: visible !important;
+    }
+
+    .nav-center>li,
+    .nav-right>li {
+      position: relative;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      overflow: visible !important;
+    }
+
+    .navbar a {
+      color: #ffffff !important; /* Texto en blanco para todos los enlaces principales */
+      text-decoration: none;
+      padding: 0 15px;
+      line-height: 70px;
+      display: block;
+      transition: color 0.3s, background-color 0.3s;
+      font-weight: 500;
+    }
+
+    .navbar a:hover {
+      color: #ffffff !important;
+      background-color: rgba(255, 255, 255, 0.15);
+    }
+
+    /* BOTONES DENTRO DE LA NAV */
+    .btn-test {
+      border: 1px solid #ffffff !important;
+      background-color: transparent !important;
+      padding: 8px 16px !important;
+      line-height: normal !important;
+      color: #ffffff !important;
+      border-radius: 5px;
+      transition: background-color 0.3s, color 0.3s;
+      margin-left: 10px;
+      font-weight: bold;
+    }
+
+    .btn-test:hover {
+      background-color: #ffffff !important;
+      color: #223243 !important;
+    }
+
+    /* DESPLEGABLES DENTRO DEL NAVBAR DESKTOP */
+    .dropdown {
+      position: relative;
+      overflow: visible !important;
+    }
+
+    .mega-menu,
+    .search-dropdown {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      background-color: #ffffff !important;
+      color: #333333 !important;
+      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.25);
+      border-radius: 12px;
+      border: 1px solid #e5e5e5;
+      z-index: 99999 !important; /* Muestra el menú en primer plano */
+      transition: all 0.25s ease-in-out;
+    }
+
+    .dropdown:hover .mega-menu,
+    .dropdown:hover .search-dropdown {
+      display: block !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      transform: translateX(-50%) translateY(0) !important;
+    }
+
+    /* SUBMENÚ COMPACTO DE COLECCIONES */
+    .collections-dropdown-menu {
+      min-width: 240px;
+      padding: 12px;
+    }
+
+    .collections-dropdown-menu .menu-column a {
+      padding: 10px 14px !important;
+      line-height: normal !important;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #333333 !important; /* Texto oscuro dentro del cuadro blanco */
+      border-radius: 8px;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    .collections-dropdown-menu .menu-column a:hover {
+      background-color: #f5f5f5 !important;
+      color: #e74c3c !important;
+    }
+
+    /* MEGA MENU TEORÍA DEL COLOR RESTRUCTURADO */
+    .color-theory-dropdown {
+      min-width: 380px;
+      padding: 20px;
+    }
+
+    .color-menu-container {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .color-menu-items {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .color-menu-items a {
+      color: #333333 !important;
+      line-height: 1.3 !important;
+      padding: 10px 12px !important;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: background-color 0.2s, color 0.2s;
+    }
+
+    .color-menu-items a:hover {
+      background-color: #f8f9fa !important;
+      color: #e74c3c !important;
+    }
+
+    .color-menu-items strong {
+      display: block;
+      font-size: 0.92rem;
+      color: #2c3e50 !important;
+    }
+
+    .color-menu-items p {
+      margin: 2px 0 0 0;
+      font-size: 0.78rem;
+      color: #666666 !important;
+    }
+
+    /* TIP DE ESTILO ABAJO */
+    .featured-info-bottom {
+      background-color: #f8f9fa;
+      padding: 12px 15px;
+      border-radius: 8px;
+      border-left: 4px solid #e74c3c;
+      margin-top: 5px;
+    }
+
+    .featured-info-bottom h5 {
+      margin: 0 0 4px 0;
+      color: #2c3e50;
+      font-size: 0.88rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .featured-info-bottom p {
+      margin: 0;
+      font-size: 0.8rem;
+      color: #555555;
+      line-height: 1.35;
+    }
+
+    /* SEARCH DROPDOWN */
+    .search-dropdown {
+      right: 0;
+      left: auto;
+      transform: none !important;
+      padding: 15px;
+      min-width: 280px;
+    }
+
+    .dropdown:hover .search-dropdown {
+      transform: none !important;
+    }
+
+    .search-form {
+      display: flex;
+      gap: 8px;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      outline: none;
+    }
+
+    .search-btn {
+      background-color: #223243;
+      color: #ffffff;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .search-btn:hover {
+      background-color: #1a252f;
+    }
+
+    /* USER DROPDOWN */
+    .user-dropdown-container {
+      position: relative;
+    }
+
+    .user-toggle {
+      display: flex !important;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      text-transform: uppercase;
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 1px;
+      color: #ffffff !important;
+    }
+
+    .user-avatar-badge {
+      width: 26px;
+      height: 26px;
+      background-color: #ffffff;
+      color: #223243;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .arrow-down {
+      font-size: 10px;
+      color: #ffffff;
+    }
+
+    .user-dropdown-card {
+      display: none;
+      position: absolute;
+      right: 0;
+      top: 100%;
+      width: 260px;
+      background: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+      border: 1px solid #eaeaea;
+      padding: 16px;
+      z-index: 99999;
+    }
+
+    .user-dropdown-container:hover .user-dropdown-card {
+      display: block;
+    }
+
+    .user-card-header {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding-bottom: 4px;
+    }
+
+    .user-card-name {
+      font-size: 13px;
+      font-weight: 800;
+      color: #1a1a1a;
+      text-transform: uppercase;
+    }
+
+    .user-card-email {
+      font-size: 12px;
+      color: #666666;
+      word-break: break-all;
+    }
+
+    .user-card-divider {
+      height: 1px;
+      background-color: #e5e5e5;
+      margin: 8px 0;
+    }
+
+    /* CORRECCIÓN DE VISIBILIDAD PARA ENLACES E ICONOS EN EL DESPLEGABLE DE USUARIO */
+    .user-dropdown-card a.user-card-item,
+    .user-dropdown-card button.user-card-item {
+      display: flex !important;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 8px 10px !important;
+      line-height: normal !important;
+      border-radius: 6px;
+      background: transparent;
+      border: none;
+      color: #222222 !important; /* Texto oscuro explícito */
+      font-size: 12px;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+      text-transform: uppercase;
+    }
+
+    .user-dropdown-card .item-icon {
+      stroke: #222222 !important; /* Color de línea para los iconos SVG */
+      flex-shrink: 0;
+    }
+
+    .user-dropdown-card a.user-card-item:hover,
+    .user-dropdown-card button.user-card-item:hover {
+      background-color: #f5f5f5 !important;
+      color: #000000 !important;
+    }
+
+    .user-dropdown-card .logout-item:hover {
+      background-color: #fff1f0 !important;
+      color: #e53e3e !important;
+    }
+
+    .user-dropdown-card .logout-item:hover .item-icon {
+      stroke: #e53e3e !important;
+    }
+
+    /* VENTANA MODAL TEMPERATURA DE COLOR */
+    .temp-modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(4px);
+      z-index: 100000;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .temp-modal-overlay.active {
+      display: flex;
+    }
+
+    .temp-modal-window {
+      background: #ffffff;
+      color: #333333;
+      width: 100%;
+      max-width: 950px;
+      max-height: 88vh;
+      border-radius: 14px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      animation: modalFadeIn 0.25s ease-out;
+    }
+
+    @keyframes modalFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .temp-modal-header {
+      padding: 18px 24px;
+      background: #223243;
+      color: #ffffff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .temp-modal-header h3 {
+      margin: 0;
+      font-size: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .temp-modal-close {
+      background: none;
+      border: none;
+      color: #ffffff;
+      font-size: 1.5rem;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0 6px;
+      transition: color 0.2s;
+    }
+
+    .temp-modal-close:hover {
+      color: #e74c3c;
+    }
+
+    .temp-modal-body {
+      padding: 25px;
+      overflow-y: auto;
+      flex-grow: 1;
+    }
+
+    .temp-tabs-bar {
+      display: flex;
+      gap: 12px;
+      border-bottom: 2px solid #eeeeee;
+      padding-bottom: 12px;
+      margin-bottom: 20px;
+    }
+
+    .temp-tab-btn {
+      padding: 10px 20px;
+      border: none;
+      background: #f1f5f9;
+      color: #475569;
+      font-weight: 700;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.2s ease;
+    }
+
+    .temp-tab-btn.active.warm {
+      background: #e67e22;
+      color: #ffffff;
+    }
+
+    .temp-tab-btn.active.cool {
+      background: #2980b9;
+      color: #ffffff;
+    }
+
+    .temp-tab-btn.active.neutral {
+      background: #64748b;
+      color: #ffffff;
+    }
+
+    .temp-tab-content {
+      display: none;
+    }
+
+    .temp-tab-content.active {
+      display: block;
+    }
+
+    .color-swatches-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 15px;
+      margin: 15px 0 25px 0;
+    }
+
+    .color-swatch-item {
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+      text-align: center;
+    }
+
+    .color-swatch-box {
+      height: 70px;
+      width: 100%;
+    }
+
+    .color-swatch-label {
+      padding: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      background: #ffffff;
+      color: #333333;
+    }
+
+    .color-swatch-hex {
+      font-size: 0.7rem;
+      color: #888888;
+      display: block;
+    }
+
+    /* FLASH MESSAGES */
+    .flash-stack {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      z-index: 10000;
+    }
+
+    .flash {
+      padding: 12px 20px;
+      margin-bottom: 10px;
+      border-radius: 5px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .flash-success {
+      background-color: #2ecc71;
+      color: white;
+    }
+
+    .flash-error {
+      background-color: #e74c3c;
+      color: white;
+    }
+
+    /* BOTÓN Y PANEL MÓVIL (OFF-CANVAS) */
+    .menu-toggle {
+      display: none;
+      background: none;
+      border: none;
+      color: #ffffff !important;
+      font-size: 1.6rem;
+      cursor: pointer;
+    }
+
+    .mobile-sidebar {
+      position: fixed;
+      top: 0;
+      right: -300px;
+      width: 280px;
+      height: 100vh;
+      background-color: #ffffff;
+      box-shadow: -5px 0 25px rgba(0, 0, 0, 0.15);
+      z-index: 100000;
+      display: flex;
+      flex-direction: column;
+      transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .mobile-sidebar.active {
+      right: 0;
+    }
+
+    .mobile-sidebar-header {
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #eeeeee;
+      background: #223243;
+    }
+
+    .mobile-close-btn {
+      background: none;
+      border: none;
+      font-size: 1.4rem;
+      color: #ffffff;
+      cursor: pointer;
+    }
+
+    .mobile-sidebar-body {
+      overflow-y: auto;
+      flex-grow: 1;
+      background: #ffffff;
+    }
+
+    .mobile-nav-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .mobile-nav-link {
+      display: flex;
+      align-items: center;
+      padding: 14px 20px;
+      color: #2c3e50 !important;
+      font-weight: 500;
+      text-decoration: none;
+      border-bottom: 1px solid #f8f9fa;
+      transition: background-color 0.2s;
+    }
+
+    .mobile-nav-link:hover {
+      background-color: #f8f9fa;
+      color: #e74c3c !important;
+    }
+
+    /* ACORDEONES MÓVILES */
+    .mobile-accordion-btn {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 20px;
+      background: none;
+      border: none;
+      border-bottom: 1px solid #f8f9fa;
+      color: #2c3e50;
+      font-size: 1rem;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .mobile-accordion-btn .arrow {
+      transition: transform 0.3s ease;
+    }
+
+    .mobile-accordion.active .mobile-accordion-btn .arrow {
+      transform: rotate(180deg);
+    }
+
+    .mobile-accordion-content {
+      max-height: 0;
+      overflow: hidden;
+      background-color: #f8f9fa;
+      transition: max-height 0.3s ease-out;
+    }
+
+    .mobile-accordion-content a {
+      display: block;
+      padding: 10px 20px 10px 40px;
+      color: #555555 !important;
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+
+    .mobile-accordion-content a:hover {
+      color: #e74c3c !important;
+    }
+
+    .mobile-search-box {
+      padding: 12px 20px;
+      border-bottom: 1px solid #f8f9fa;
+    }
+
+    .mobile-search-box form {
+      display: flex;
+      gap: 5px;
+    }
+
+    .mobile-search-box input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 0.85rem;
+    }
+
+    .mobile-search-box button {
+      background: #223243;
+      color: #ffffff;
+      border: none;
+      padding: 0 12px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .mobile-logout-btn {
+      width: 100%;
+      text-align: left;
+      background: none;
+      border: none;
+      padding: 14px 5px;
+      color: #c0392b;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+
+    .menu-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.4);
+      z-index: 99999;
+    }
+
+    .menu-overlay.active {
+      display: block;
+    }
+
+    @media (max-width: 900px) {
+      .nav-center,
+      .nav-right {
+        display: none !important;
+      }
+
+      .menu-toggle {
+        display: block !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <a href="{{ url_for('index') }}" class="nav-brand">
+      <img src="{{ url_for('static', filename='Logo.png') }}" alt="Logo" style="height: 38px; object-fit: contain;">
+      <span>SET-MATCH-GO!</span>
+    </a>
+
+    <ul class="nav-center">
+      <li><a href="{{ url_for('index') }}">Inicio</a></li>
+
+      <!-- DESPLEGABLE DE COLECCIONES SOLO TÍTULOS -->
+      <li class="dropdown nav-item">
+        <a href="{{ url_for('colecciones') }}" class="dropdown-toggle">Colecciones ▾</a>
+        <div class="mega-menu collections-dropdown-menu">
+          <div class="menu-column">
+            <a href="{{ url_for('colecciones', _anchor='primavera') }}">
+              <span class="menu-icon">🌸</span>
+              <div><strong>Primavera</strong></div>
+            </a>
+            <a href="{{ url_for('colecciones', _anchor='verano') }}">
+              <span class="menu-icon">☀️</span>
+              <div><strong>Verano</strong></div>
+            </a>
+            <a href="{{ url_for('colecciones', _anchor='otono') }}">
+              <span class="menu-icon">🍂</span>
+              <div><strong>Otoño</strong></div>
+            </a>
+            <a href="{{ url_for('colecciones', _anchor='invierno') }}">
+              <span class="menu-icon">❄️</span>
+              <div><strong>Invierno</strong></div>
+            </a>
+            <div style="border-top: 1px solid #eee; margin: 4px 0;"></div>
+            <a href="{{ url_for('colecciones') }}">
+              <span class="menu-icon">🛍️</span>
+              <div><strong>Ver Todo</strong></div>
+            </a>
+          </div>
+        </div>
+      </li>
+
+      <!-- DESPLEGABLE DE TEORÍA DEL COLOR ACTUALIZADO -->
+      <li class="dropdown dropdown-color nav-item">
+        <a href="#" class="dropdown-toggle">Teoría del Color ▾</a>
+        <div class="mega-menu color-theory-dropdown">
+          <div class="color-menu-container">
+            <div class="color-menu-items">
+              <a href="{{ url_for('colorwheel') }}">
+                <span class="menu-icon" style="font-size: 1.2rem;">🎨</span>
+                <div>
+                  <strong>Rueda de Armonías & Probador</strong>
+                  <p>Explora combinaciones cromáticas y prueba tonos</p>
+                </div>
+              </a>
+              <a id="openTempModalBtn">
+                <span class="menu-icon" style="font-size: 1.2rem;">🌡️</span>
+                <div>
+                  <strong>Temperatura de Color</strong>
+                  <p>Guía de tonos cálidos, fríos y neutros</p>
+                </div>
+              </a>
+            </div>
+
+            <!-- TIP DE ESTILO UBICADO ABAJO -->
+            <div class="featured-info-bottom">
+              <h5>💡 Tip de Estilo</h5>
+              <p>Usa la regla 60-30-10 para combinar prendas: 60% color dominante, 30% secundario y 10% de acento.</p>
+            </div>
+          </div>
+        </div>
+      </li>
+    </ul>
+
+    <ul class="nav-right">
+      <li class="dropdown nav-item">
+        <a href="#" class="dropdown-toggle">Buscar 🔍</a>
+        <div class="search-dropdown">
+          <form action="#" method="GET" class="search-form">
+            <input type="text" name="q" class="search-input" placeholder="Buscar prenda, estilo..." required>
+            <button type="submit" class="search-btn">Buscar</button>
+          </form>
+        </div>
+      </li>
+
+      {% if current_user.is_authenticated %}
+      <li class="dropdown user-dropdown-container nav-item">
+        <a href="#" class="dropdown-toggle user-toggle">
+          <span class="user-avatar-badge">{{ current_user.nombre[0] | upper }}</span>
+          <span class="user-display-name">{{ current_user.nombre.split()[0] }}</span>
+          <span class="arrow-down">▾</span>
+        </a>
+
+        <div class="user-dropdown-card">
+          <div class="user-card-header">
+            <span class="user-card-name">{{ current_user.nombre }}</span>
+            <span class="user-card-email">{{ current_user.email }}</span>
+          </div>
+
+          <div class="user-card-divider"></div>
+
+          <a href="{{ url_for('guardarropa') }}" class="user-card-item">
+            <svg class="item-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+              stroke-width="2">
+              <path
+                d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.47a1 1 0 00.99.84H6v10a2 2 0 002 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.47a2 2 0 00-1.34-2.23z" />
+            </svg>
+            <span>MI GUARDARROPA</span>
+          </a>
+
+          <a href="{{ url_for('historial') }}" class="user-card-item">
+            <svg class="item-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+              stroke-width="2">
+              <circle cx="12" cy="12" r="9" />
+              <polyline points="12 7 12 12 15 15" />
+            </svg>
+            <span>MI HISTORIAL</span>
+          </a>
+
+          <a href="{{ url_for('perfil') }}" class="user-card-item">
+            <svg class="item-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+              stroke-width="2">
+              <circle cx="12" cy="12" r="3" />
+              <path
+                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+            <span>CONFIGURACIÓN DE PERFIL</span>
+          </a>
+
+          <div class="user-card-divider"></div>
+
+          <form action="{{ url_for('logout') }}" method="POST" style="margin: 0;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
+            <button type="submit" class="user-card-item logout-item">
+              <svg class="item-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+                stroke-width="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+              <span>CERRAR SESIÓN</span>
+            </button>
+          </form>
+        </div>
+      </li>
+      {% else %}
+      <li><a href="{{ url_for('login') }}">INICIAR SESIÓN</a></li>
+      {% endif %}
+      <li><a href="{{ url_for('test') }}" class="btn-test">Test Colorimetría</a></li>
+    </ul>
+
+    <button class="menu-toggle" id="menuBtn" aria-label="Abrir menú">☰</button>
+  </nav>
+
+  <!-- MENÚ MÓVIL OFF-CANVAS MEJORADO -->
+  <div class="mobile-sidebar" id="mobileMenu">
+    <div class="mobile-sidebar-header">
+      <div class="nav-brand">
+        <img src="{{ url_for('static', filename='Logo.png') }}" alt="Logo" style="height: 32px; object-fit: contain;">
+        <span>SET-MATCH-GO!</span>
+      </div>
+      <button class="mobile-close-btn" id="closeMobileMenuBtn">✕</button>
+    </div>
+
+    <div class="mobile-sidebar-body">
+      <ul class="mobile-nav-list">
+        <li>
+          <a href="{{ url_for('index') }}" class="mobile-nav-link">
+            <span>🏠 Inicio</span>
+          </a>
+        </li>
+
+        <!-- ACORDEÓN: COLECCIONES -->
+        <li class="mobile-accordion">
+          <button class="mobile-accordion-btn">
+            <span>🛍️ Colecciones</span>
+            <span class="arrow">▾</span>
+          </button>
+          <div class="mobile-accordion-content">
+            <a href="{{ url_for('colecciones', estacion='primavera') }}">🌸 Primavera</a>
+            <a href="{{ url_for('colecciones', estacion='verano') }}">☀️ Verano</a>
+            <a href="{{ url_for('colecciones', estacion='otono') }}">🍂 Otoño</a>
+            <a href="{{ url_for('colecciones', estacion='invierno') }}">❄️ Invierno</a>
+            <a href="{{ url_for('colecciones') }}" style="font-weight: bold; color: #e74c3c;">Ver Todo el Catálogo</a>
+          </div>
+        </li>
+
+        <!-- ACORDEÓN: TEORÍA DEL COLOR -->
+        <li class="mobile-accordion">
+          <button class="mobile-accordion-btn">
+            <span>🎨 Teoría del Color</span>
+            <span class="arrow">▾</span>
+          </button>
+          <div class="mobile-accordion-content">
+            <a href="{{ url_for('colorwheel') }}">🎨 Rueda de Armonías & Probador</a>
+            <a href="#" id="mobileOpenTempModal">🌡️ Temperatura de Color</a>
+          </div>
+        </li>
+
+        <li>
+          <div class="mobile-search-box">
+            <form action="#" method="GET">
+              <input type="text" name="q" placeholder="Buscar prendas, estilos..." required>
+              <button type="submit">🔍</button>
+            </form>
+          </div>
+        </li>
+
+        {% if current_user.is_authenticated %}
+        <li>
+          <a href="{{ url_for('guardarropa') }}" class="mobile-nav-link">
+            <span>👕 Mi Guardarropa</span>
+          </a>
+        </li>
+        <li>
+          <a href="{{ url_for('historial') }}" class="mobile-nav-link">
+            <span>📋 Mi Historial</span>
+          </a>
+        </li>
+        <li>
+          <a href="{{ url_for('perfil') }}" class="mobile-nav-link">
+            <span>⚙️ Configuración de Perfil</span>
+          </a>
+        </li>
+        <li>
+          <form action="{{ url_for('logout') }}" method="POST" style="margin: 0; padding: 0 15px;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
+            <button type="submit" class="mobile-logout-btn">
+              🚪 Cerrar Sesión ({{ current_user.nombre.split()[0] }})
+            </button>
+          </form>
+        </li>
+        {% else %}
+        <li>
+          <a href="{{ url_for('login') }}" class="mobile-nav-link">
+            <span>👤 Iniciar Sesión</span>
+          </a>
+        </li>
+        {% endif %}
+      </ul>
+
+      <div style="padding: 20px 15px;">
+        <a href="{{ url_for('test') }}" class="btn-test"
+          style="display: block; text-align: center; margin: 0; padding: 12px !important; font-size: 1rem; color: #ffffff !important; background: #e74c3c !important; border: none !important;">
+          Test Colorimetría
+        </a>
+      </div>
+    </div>
+  </div>
+  <div class="menu-overlay" id="menuOverlay"></div>
+
+  <!-- MODAL TEMPERATURA DE COLOR -->
+  <div class="temp-modal-overlay" id="tempModalOverlay">
+    <div class="temp-modal-window">
+      <div class="temp-modal-header">
+        <h3>🌡️ Muestrario Físico: Temperatura de Color</h3>
+        <button class="temp-modal-close" id="closeTempModalBtn">✕</button>
+      </div>
+      <div class="temp-modal-body">
+        <div class="temp-tabs-bar">
+          <button class="temp-tab-btn active warm" onclick="switchTempTab('warm', this)">🔥 Tonos Cálidos</button>
+          <button class="temp-tab-btn cool" onclick="switchTempTab('cool', this)">❄️ Tonos Fríos</button>
+          <button class="temp-tab-btn neutral" onclick="switchTempTab('neutral', this)">⚪ Tonos Neutros</button>
+        </div>
+
+        <div class="temp-tab-content active" id="tab-warm">
+          <p style="margin-top: 0; color: #555; font-size: 0.9rem;">
+            Los <strong>tonos cálidos</strong> contienen pigmentos amarillos, rojos y dorados. Generan sensación de
+            vitalidad y realzan pieles cálidas.
+          </p>
+          <div class="color-swatches-grid">
+            <div class="color-swatch-item">
+              <div class="color-swatch-box" style="background-color: #E67E22;"></div>
+              <div class="color-swatch-label">Naranja Cálido<span class="color-swatch-hex">#E67E22</span></div>
+            </div>
+            <div class="color-swatch-item">
+              <div class="color-swatch-box" style="background-color: #C0392B;"></div>
+              <div class="color-swatch-label">Rojo Rubí<span class="color-swatch-hex">#C0392B</span></div>
+            </div>
+            <div class="color-swatch-item">
+              <div class="color-swatch-box" style="background-color: #F1C40F;"></div>
+              <div class="color-swatch-label">Amarillo Mostaza<span class="color-swatch-hex">#F1C40F</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="temp-tab-content" id="tab-cool">
+          <p style="margin-top: 0; color: #555; font-size: 0.9rem;">
+            Los <strong>tonos fríos</strong> tienen base azulada, verdosa o violeta. Evocan frescura y elegancia sobria.
+          </p>
+          <div class="color-swatches-grid">
+            <div class="color-swatch-item">
+              <div class="color-swatch-box" style="background-color: #2980B9;"></div>
+              <div class="color-swatch-label">Azul Marino<span class="color-swatch-hex">#2980B9</span></div>
+            </div>
+            <div class="color-swatch-item">
+              <div class="color-swatch-box" style="background-color: #16A085;"></div>
+              <div class="color-swatch-label">Verde Menta<span class="color-swatch-hex">#16A085</span></div>
+            </div>
+            <div class="color-swatch-item">
+              <div class="color-swatch-box" style="background-color: #8E44AD;"></div>
+              <div class="color-swatch-label">Violeta<span class="color-swatch-hex">#8E44AD</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="temp-tab-content" id="tab-neutral">
+          <p style="margin-top: 0; color: #555; font-size: 0.9rem;">
+            Los <strong>tonos neutros</strong> son acromáticos o de muy baja saturación. Sirven como base estructural
+            perfecta.
+          </p>
+          <div class="color-swatches-grid">
+            <div class="color-swatch-item">
+              <div class="color-swatch-box" style="background-color: #FFFFFF; border-bottom: 1px solid #ddd;"></div>
+              <div class="color-swatch-label">Blanco Puro<span class="color-swatch-hex">#FFFFFF</span></div>
+            </div>
+            <div class="color-swatch-item">
+              <div class="color-swatch-box" style="background-color: #1A1A1A;"></div>
+              <div class="color-swatch-label">Negro Intenso<span class="color-swatch-hex">#1A1A1A</span></div>
+            </div>
+            <div class="color-swatch-item">
+              <div class="color-swatch-box" style="background-color: #BDC3C7;"></div>
+              <div class="color-swatch-label">Gris Perla<span class="color-swatch-hex">#BDC3C7</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MENSAJES FLASH -->
+  {% with mensajes = get_flashed_messages(with_categories=true) %}
+  {% if mensajes %}
+  <div class="flash-stack" id="flashStack">
+    {% for categoria, texto in mensajes %}
+    <div class="flash flash-{{ categoria }}">{{ texto }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+
+  <script>
+    /* CONTROL DEL MENÚ MÓVIL OFF-CANVAS */
+    const menuBtn = document.getElementById('menuBtn');
+    const closeMobileMenuBtn = document.getElementById('closeMobileMenuBtn');
+    const mobileMenu = document.getElementById('mobileMenu');
+    const menuOverlay = document.getElementById('menuOverlay');
+
+    function openMobileMenu() {
+      if (mobileMenu) mobileMenu.classList.add('active');
+      if (menuOverlay) menuOverlay.classList.add('active');
+    }
+
+    function closeMobileMenu() {
+      if (mobileMenu) mobileMenu.classList.remove('active');
+      if (menuOverlay) menuOverlay.classList.remove('active');
+    }
+
+    if (menuBtn) menuBtn.addEventListener('click', openMobileMenu);
+    if (closeMobileMenuBtn) closeMobileMenuBtn.addEventListener('click', closeMobileMenu);
+    if (menuOverlay) menuOverlay.addEventListener('click', closeMobileMenu);
+
+    /* CERRAR MENÚ MÓVIL AUTOMÁTICAMENTE EN ESCRITORIO (ANCHO > 900PX) */
+    window.addEventListener('resize', function () {
+      if (window.innerWidth > 900) {
+        closeMobileMenu();
+      }
+    });
+
+    /* ACORDEÓN INTERACTIVO EN MÓVIL */
+    const accordions = document.querySelectorAll('.mobile-accordion-btn');
+
+    accordions.forEach(btn => {
+      btn.addEventListener('click', function () {
+        const parent = this.parentElement;
+        const content = this.nextElementSibling;
+
+        parent.classList.toggle('active');
+
+        if (content.style.maxHeight) {
+          content.style.maxHeight = null;
+        } else {
+          content.style.maxHeight = content.scrollHeight + "px";
+        }
+      });
+    });
+
+    const flashStack = document.getElementById('flashStack');
+    if (flashStack) setTimeout(() => flashStack.remove(), 5000);
+
+    /* MODAL TEMPERATURA DE COLOR */
+    const openTempModalBtn = document.getElementById('openTempModalBtn');
+    const mobileOpenTempModal = document.getElementById('mobileOpenTempModal');
+    const closeTempModalBtn = document.getElementById('closeTempModalBtn');
+    const tempModalOverlay = document.getElementById('tempModalOverlay');
+
+    if (openTempModalBtn) {
+      openTempModalBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        tempModalOverlay.classList.add('active');
+      });
+    }
+
+    if (mobileOpenTempModal) {
+      mobileOpenTempModal.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeMobileMenu();
+        tempModalOverlay.classList.add('active');
+      });
+    }
+
+    if (closeTempModalBtn) {
+      closeTempModalBtn.addEventListener('click', () => {
+        tempModalOverlay.classList.remove('active');
+      });
+    }
+
+    if (tempModalOverlay) {
+      tempModalOverlay.addEventListener('click', (e) => {
+        if (e.target === tempModalOverlay) tempModalOverlay.classList.remove('active');
+      });
+    }
+
+    function switchTempTab(type, btnElement) {
+      document.querySelectorAll('.temp-tab-btn').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.temp-tab-content').forEach(c => c.classList.remove('active'));
+      btnElement.classList.add('active');
+      const activeContent = document.getElementById('tab-' + type);
+      if (activeContent) activeContent.classList.add('active');
+    }
+  </script>
+  {% if current_user.is_authenticated %}
+  {% include 'chat_widget.html' %}
+  {% endif %}
+</body>
+
+</html>

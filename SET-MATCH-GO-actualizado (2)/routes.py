@@ -1,0 +1,474 @@
+import os
+import re
+import uuid
+from datetime import datetime, timezone
+from urllib.parse import urljoin, urlparse
+
+from flask import current_app, flash, jsonify, redirect, render_template, request, session, url_for
+from flask_login import current_user, login_required, login_user, logout_user
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+
+from colorimetria import PERFILES, RespuestasInvalidas, clasificar
+from extensions import db, limiter
+from models import Guardarropa, TestResult, User
+from services.email_service import (
+    enviar_correo_confirmacion,
+    enviar_correo_recuperacion,
+    huella_password,
+    verificar_token,
+    verificar_token_reset,
+)
+from services.gemini_service import generar_recomendacion_colorimetria, responder_chat_estilista
+
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+LIMITE_PREGUNTAS_INVITADO = 3
+MAX_PREGUNTA = 500
+CATEGORIAS = {'Superior', 'Inferior', 'Abrigo', 'Calzado', 'Accesorios'}
+FIRMAS_IMAGEN = (
+    (b"\x89PNG\r\n\x1a\n", "png"),
+    (b"\xff\xd8\xff", "jpg"),
+)
+
+
+def tipo_imagen(stream):
+    """Detecta PNG/JPEG/WEBP por su contenido (no por el nombre que declara el usuario)."""
+    cabecera = stream.read(12)
+    stream.seek(0)
+    for firma, ext in FIRMAS_IMAGEN:
+        if cabecera.startswith(firma):
+            return ext
+    if cabecera[:4] == b"RIFF" and cabecera[8:12] == b"WEBP":
+        return "webp"
+    return None
+
+
+def _url_segura(destino):
+    """Evita open-redirect: solo se aceptan destinos dentro del mismo sitio."""
+    if not destino:
+        return False
+    base = urlparse(request.host_url)
+    objetivo = urlparse(urljoin(request.host_url, destino))
+    return objetivo.scheme in ("http", "https") and base.netloc == objetivo.netloc
+
+
+def _completar_diagnostico(datos):
+    """Genera la recomendación de IA (con respaldo local), la guarda en sesión y, si hay
+    usuario autenticado, persiste el resultado. Idempotente: si ya existe, no repite."""
+    if "recomendacion_ia" in datos:
+        return datos
+
+    try:
+        datos["recomendacion_ia"] = generar_recomendacion_colorimetria(
+            datos.get("estacion", ""), datos.get("subtono", ""), datos.get("respuestas", {})
+        )
+    except Exception as e:
+        current_app.logger.error(f"Error llamando a Gemini IA: {e}")
+        datos["recomendacion_ia"] = (
+            "Tu paleta ha sido procesada exitosamente. Te recomendamos favorecer las prendas "
+            "que potencien el contraste y la temperatura natural de tu rostro."
+        )
+
+    session["ultimo_resultado"] = datos
+    session.modified = True
+
+    if current_user.is_authenticated:
+        try:
+            db.session.add(
+                TestResult(
+                    user_id=current_user.id,
+                    respuestas=datos.get("respuestas", {}),
+                    subtono=datos.get("subtono", ""),
+                    estacion=datos.get("estacion", ""),
+                )
+            )
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+    return datos
+
+
+def register_routes(app):
+    @app.route("/")
+    def index():
+        return render_template("index.html")
+
+    # ---------- COLECCIONES ----------
+    @app.route("/colecciones")
+    def colecciones():
+        estacion = request.args.get("estacion")
+        return render_template("colecciones.html", estacion=estacion)
+
+    # ---------- TEORÍA Y HERRAMIENTAS DE COLOR ----------
+    @app.route("/colorwheel")
+    def colorwheel():
+        return render_template("colorwheel.html")
+
+    # ---------- AUTENTICACIÓN Y RECUPERACIÓN ----------
+    @app.route("/registro", methods=["GET", "POST"])
+    @limiter.limit("10 per hour", methods=["POST"])
+    def register():
+        if current_user.is_authenticated:
+            return redirect(url_for("index"))
+
+        if request.method == "POST":
+            nombre = request.form.get("nombre", "").strip()
+            email = request.form.get("email", "").strip().lower()
+            password = request.form.get("password", "")
+            confirmar = request.form.get("confirmar", "")
+
+            errores = []
+            if not 2 <= len(nombre) <= 80:
+                errores.append("El nombre debe tener entre 2 y 80 caracteres.")
+            if not EMAIL_RE.match(email) or len(email) > 120:
+                errores.append("Ingresa un correo electrónico válido.")
+            if len(password) < 8:
+                errores.append("La contraseña debe tener al menos 8 caracteres.")
+            if password != confirmar:
+                errores.append("Las contraseñas no coinciden.")
+            if not errores and db.session.scalar(select(User).filter_by(email=email)):
+                errores.append("Ya existe una cuenta con ese correo.")
+
+            if not errores:
+                usuario = User(nombre=nombre, email=email, is_confirmed=False)
+                usuario.set_password(password)
+                db.session.add(usuario)
+                try:
+                    db.session.commit()
+                except IntegrityError:
+                    db.session.rollback()
+                    errores.append("Ya existe una cuenta con ese correo.")
+                else:
+                    if current_app.debug and not current_app.config.get("MAIL_USERNAME"):
+                        # Desarrollo sin SMTP configurado: se confirma la cuenta para poder probar
+                        usuario.is_confirmed = True
+                        db.session.commit()
+                        current_app.logger.warning("MAIL_USERNAME no configurado: cuenta confirmada automáticamente (solo desarrollo).")
+                        flash(f"¡Cuenta creada, {usuario.nombre}! (modo desarrollo: ya puedes iniciar sesión)", "info")
+                    else:
+                        try:
+                            enviar_correo_confirmacion(usuario.email, usuario.nombre)
+                            flash(
+                                f"¡Cuenta creada con éxito, {usuario.nombre}! Revisa tu correo (y la carpeta de spam) para activar tu cuenta antes de iniciar sesión.",
+                                "info",
+                            )
+                        except Exception as e:
+                            current_app.logger.error(f"No se pudo enviar el correo de confirmación a {usuario.email}: {e}")
+                            flash(
+                                "Tu cuenta fue creada, pero no pudimos enviar el correo de verificación. "
+                                "Intenta iniciar sesión y usa «Reenviar correo de confirmación».",
+                                "warning",
+                            )
+
+                    return redirect(url_for("login"))
+
+            for e in errores:
+                flash(e, "error")
+            return render_template("auth.html", modo="register", nombre=nombre, email=email), 400
+
+        return render_template("auth.html", modo="register")
+
+    @app.route("/confirmar/<token>")
+    def confirmar_cuenta(token):
+        email = verificar_token(token, salt="email-confirm-salt", max_age=86400)
+        if not email:
+            flash("El enlace de confirmación es inválido o ha expirado.", "error")
+            return redirect(url_for("login"))
+
+        usuario = db.session.scalar(select(User).filter_by(email=email))
+        if usuario:
+            if usuario.is_confirmed:
+                flash("Tu cuenta ya había sido confirmada previamente.", "info")
+            else:
+                usuario.is_confirmed = True
+                db.session.commit()
+                flash("¡Tu cuenta ha sido activada con éxito!", "success")
+
+        return redirect(url_for("index"))
+
+    @app.route("/login", methods=["GET", "POST"])
+    @limiter.limit("10 per 15 minutes", methods=["POST"])
+    def login():
+        if current_user.is_authenticated:
+            return redirect(url_for("index"))
+
+        next_url = request.values.get("next", "")
+
+        if request.method == "POST":
+            email = request.form.get("email", "").strip().lower()
+            password = request.form.get("password", "")
+            usuario = db.session.scalar(select(User).filter_by(email=email))
+
+            if usuario is None or not usuario.check_password(password):
+                flash("Correo o contraseña incorrectos.", "error")
+                return render_template("auth.html", modo="login", email=email, next_url=next_url), 401
+
+            if not usuario.is_confirmed:
+                flash("Por favor, confirma tu correo electrónico antes de iniciar sesión.", "warning")
+                return render_template("auth.html", modo="login", email=email, next_url=next_url, sin_confirmar=True), 403
+
+            login_user(usuario)
+            flash(f"Hola de nuevo, {usuario.nombre}.", "success")
+            return redirect(next_url if _url_segura(next_url) else url_for("index"))
+
+        return render_template("auth.html", modo="login", next_url=next_url)
+
+    @app.route("/reenviar-confirmacion", methods=["POST"])
+    @limiter.limit("5 per hour")
+    def reenviar_confirmacion():
+        email = request.form.get("email", "").strip().lower()
+        usuario = db.session.scalar(select(User).filter_by(email=email)) if email else None
+        if usuario and not usuario.is_confirmed:
+            try:
+                enviar_correo_confirmacion(usuario.email, usuario.nombre)
+            except Exception as e:
+                current_app.logger.error(f"No se pudo reenviar la confirmación a {usuario.email}: {e}")
+        # Respuesta uniforme para no revelar qué correos existen
+        flash("Si la cuenta existe y está pendiente, te enviamos un nuevo correo de confirmación.", "info")
+        return redirect(url_for("login"))
+
+    # ---------- RECUPERACIÓN DE CONTRASEÑA ----------
+    @app.route("/forgot-password", methods=["GET", "POST"])
+    @limiter.limit("5 per hour", methods=["POST"])
+    def forgot_password():
+        if current_user.is_authenticated:
+            return redirect(url_for("index"))
+
+        if request.method == "POST":
+            identity = request.form.get("identity", "").strip()
+
+            if identity:
+                # Solo por correo: el nombre no es único y permitiría mandar correos a terceros
+                usuario = db.session.scalar(select(User).filter_by(email=identity.lower()))
+
+                if usuario:
+                    try:
+                        enviar_correo_recuperacion(usuario)
+                    except Exception as e:
+                        current_app.logger.error(f"Error al enviar correo de recuperación: {e}")
+
+            # Respuesta uniforme por seguridad para evitar enumeración de usuarios
+            flash(
+                "Si la cuenta existe en nuestro sistema, recibirás un enlace de recuperación en tu correo electrónico.",
+                "info",
+            )
+            return redirect(url_for("login"))
+
+        return render_template("forgot_password.html")
+
+    @app.route("/reset-password/<token>", methods=["GET", "POST"])
+    @limiter.limit("10 per hour", methods=["POST"])
+    def resetear_password(token):
+        email, huella = verificar_token_reset(token)
+        usuario = db.session.scalar(select(User).filter_by(email=email)) if email else None
+        if not usuario or huella != huella_password(usuario):
+            flash("El enlace para restablecer la contraseña es inválido, ya se usó o ha expirado.", "error")
+            return redirect(url_for("login"))
+
+        if request.method == "POST":
+            password = request.form.get("password", "")
+            confirmar = request.form.get("confirmar", "")
+
+            if len(password) < 8 or password != confirmar:
+                flash("Las contraseñas deben tener al menos 8 caracteres y coincidir.", "error")
+                return render_template("reset_password.html", token=token), 400
+
+            usuario.set_password(password)  # cambia la huella: el enlace ya no sirve
+            db.session.commit()
+            flash("Tu contraseña ha sido actualizada correctamente.", "success")
+            return redirect(url_for("login"))
+
+        return render_template("reset_password.html", token=token)
+
+    @app.route("/logout", methods=["POST"])
+    @login_required
+    def logout():
+        logout_user()
+        session.pop("ultimo_resultado", None)
+        flash("Cerraste sesión correctamente.", "success")
+        return redirect(url_for("index"))
+
+    # ---------- PERFIL DE USUARIO Y CONFIGURACIÓN ----------
+    @app.route("/perfil", methods=["GET", "POST"])
+    @login_required
+    def perfil():
+        if request.method == "POST":
+            nombre = request.form.get("nombre", "").strip()
+            color_ojos = request.form.get("color_ojos", "").strip()
+            color_cabello = request.form.get("color_cabello", "").strip()
+            biografia = request.form.get("biografia", "").strip()
+
+            if 2 <= len(nombre) <= 80:
+                current_user.nombre = nombre
+                current_user.color_ojos = color_ojos
+                current_user.color_cabello = color_cabello
+                current_user.biografia = biografia
+
+                db.session.commit()
+                flash("Perfil actualizado correctamente.", "success")
+                return redirect(url_for("perfil"))
+            else:
+                flash("El nombre debe tener entre 2 y 80 caracteres.", "error")
+
+        return render_template("perfil.html")
+
+    # ---------- TEST DE COLORIMETRÍA ----------
+    @app.route("/test", methods=["GET", "POST"])
+    def test():
+        if request.method == "POST":
+            try:
+                resultado = clasificar(request.form)
+                session["ultimo_resultado"] = resultado
+                session.modified = True
+                return render_template("procesando.html")
+            except RespuestasInvalidas as e:
+                flash(str(e), "error")
+                return redirect(url_for("test"))
+
+        return render_template("test.html")
+
+    @app.route("/resultado")
+    def resultado():
+        datos = session.get("ultimo_resultado")
+        if not datos:
+            flash("Primero realiza el test de colorimetría.", "info")
+            return redirect(url_for("test"))
+
+        datos = _completar_diagnostico(datos)
+
+        return render_template(
+            "resultado.html",
+            estacion=datos.get("estacion", ""),
+            subtono=datos.get("subtono", ""),
+            descripcion=datos.get("descripcion", ""),
+            paleta=datos.get("paleta", []),
+            recomendacion_ia=datos.get("recomendacion_ia", ""),
+        )
+
+    @app.route("/api/generar-diagnostico", methods=["POST"])
+    def generar_diagnostico_api():
+        datos = session.get("ultimo_resultado")
+        if not datos:
+            return jsonify({"success": False, "error": "No hay test pendiente"}), 400
+
+        _completar_diagnostico(datos)
+        return jsonify({"success": True})
+
+    # ---------- API CHAT FLOTANTE DE IA ----------
+    @app.route("/api/chat-ia", methods=["POST"])
+    @limiter.limit(lambda: "30 per hour" if current_user.is_authenticated else "10 per day")
+    def chat_ia():
+        data = request.get_json(silent=True) or {}
+        pregunta = str(data.get("pregunta", "")).strip()[:MAX_PREGUNTA]
+
+        if not pregunta:
+            return jsonify({"error": "La pregunta no puede estar vacía"}), 400
+
+        if not current_user.is_authenticated:
+            preguntas_realizadas = session.get("preguntas_ia_count", 0)
+
+            if preguntas_realizadas >= LIMITE_PREGUNTAS_INVITADO:
+                return jsonify({
+                    "limite_alcanzado": True,
+                    "mensaje": f"Has alcanzado el límite de {LIMITE_PREGUNTAS_INVITADO} consultas gratuitas. ¡Inicia sesión para chatear sin restricciones!"
+                }), 403
+
+            session["preguntas_ia_count"] = preguntas_realizadas + 1
+
+        respuesta = responder_chat_estilista(pregunta, session.get("ultimo_resultado"))
+
+        preguntas_restantes = None
+        if not current_user.is_authenticated:
+            preguntas_restantes = LIMITE_PREGUNTAS_INVITADO - session["preguntas_ia_count"]
+
+        return jsonify({
+            "respuesta": respuesta,
+            "preguntas_restantes": preguntas_restantes,
+            "limite_alcanzado": False
+        })
+
+    # ---------- HISTORIAL ----------
+    @app.route("/historial")
+    @login_required
+    def historial():
+        resultados = current_user.resultados.all()
+        return render_template("historial.html", resultados=resultados, perfiles=PERFILES)
+
+    @app.route("/historial/eliminar/<int:id>", methods=["POST"])
+    @login_required
+    def eliminar_historial(id):
+        resultado = db.session.scalar(
+            select(TestResult).filter_by(id=id, user_id=current_user.id)
+        )
+        if resultado:
+            db.session.delete(resultado)
+            db.session.commit()
+            flash("Registro eliminado del historial.", "success")
+        return redirect(url_for("historial"))
+
+    # ---------- GUARDARROPA ----------
+    @app.route('/guardarropa')
+    @login_required
+    def guardarropa():
+        prendas = Guardarropa.query.filter_by(usuario_id=current_user.id).order_by(Guardarropa.fecha_creacion.desc()).all()
+        return render_template('guardarropa.html', prendas=prendas)
+
+    @app.route('/guardarropa/subir', methods=['POST'])
+    @login_required
+    def subir_prenda():
+        if 'foto' not in request.files:
+            flash('No se seleccionó ningún archivo.', 'error')
+            return redirect(url_for('guardarropa'))
+
+        file = request.files['foto']
+        nombre = request.form.get('nombre', '').strip()
+        categoria = request.form.get('categoria', 'Superior')
+
+        if not file or file.filename == '':
+            flash('Debes seleccionar una imagen.', 'error')
+            return redirect(url_for('guardarropa'))
+
+        if not nombre:
+            flash('Debes ingresar un nombre para la prenda.', 'error')
+            return redirect(url_for('guardarropa'))
+
+        ext = tipo_imagen(file.stream)
+        if ext:
+            filename = f"{current_user.id}_{int(datetime.now(timezone.utc).timestamp())}_{uuid.uuid4().hex[:8]}.{ext}"
+
+            upload_dir = current_app.config['UPLOAD_FOLDER']
+            os.makedirs(upload_dir, exist_ok=True)
+            file.save(os.path.join(upload_dir, filename))
+
+            nueva_prenda = Guardarropa(
+                usuario_id=current_user.id,
+                nombre=nombre[:100],
+                categoria=categoria if categoria in CATEGORIAS else 'Superior',
+                imagen=filename
+            )
+            db.session.add(nueva_prenda)
+            db.session.commit()
+
+            flash('¡Prenda guardada en tu guardarropa!', 'success')
+        else:
+            flash('El archivo no es una imagen válida (PNG, JPG o WEBP).', 'error')
+
+        return redirect(url_for('guardarropa'))
+
+    @app.route("/guardarropa/eliminar/<int:id>", methods=["POST"])
+    @login_required
+    def eliminar_prenda(id):
+        prenda = db.session.scalar(select(Guardarropa).filter_by(id=id, usuario_id=current_user.id))
+        if not prenda:
+            flash("Prenda no encontrada.", "error")
+            return redirect(url_for("guardarropa"))
+
+        ruta = os.path.join(current_app.config["UPLOAD_FOLDER"], prenda.imagen)
+        db.session.delete(prenda)
+        db.session.commit()
+        try:
+            os.remove(ruta)
+        except OSError:
+            pass
+        flash("Prenda eliminada.", "success")
+        return redirect(url_for("guardarropa"))

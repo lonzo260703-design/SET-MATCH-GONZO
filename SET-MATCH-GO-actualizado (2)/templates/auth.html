@@ -1,0 +1,586 @@
+{% extends "base.html" %}
+
+{% block title %}Acceso — SET-MATCH-GO!{% endblock %}
+
+{% block extra_css %}
+  <style>
+    body {
+      background-color: #111827 !important;
+    }
+
+    /* CONTENEDOR GENERAL CON FONDO FIJO DE IMÁGENES */
+    .auth-sliding-wrapper {
+      position: relative;
+      min-height: calc(100vh - 70px);
+      margin-top: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+
+    /* SLIDER DE FONDO DE IMÁGENES ESTACIONALES CON GRADIENTE */
+    .auth-bg-slider {
+      position: fixed;
+      top: 70px;
+      left: 0;
+      width: 100vw;
+      height: calc(100vh - 70px);
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .bg-slide {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: center;
+      opacity: 0;
+      transition: opacity 1.2s ease-in-out;
+    }
+
+    .bg-slide.active {
+      opacity: 1;
+    }
+
+    .bg-spring {
+      background-image: linear-gradient(rgba(15, 23, 42, 0.8), rgba(15, 23, 42, 0.88)),
+                        url('https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=1600&q=80');
+    }
+    .bg-summer {
+      background-image: linear-gradient(rgba(15, 23, 42, 0.8), rgba(15, 23, 42, 0.88)),
+                        url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80');
+    }
+    .bg-autumn {
+      background-image: linear-gradient(rgba(15, 23, 42, 0.8), rgba(15, 23, 42, 0.88)),
+                        url('https://images.unsplash.com/photo-1507187632231-5beb21a654a2?auto=format&fit=crop&w=1600&q=80');
+    }
+    .bg-winter {
+      background-image: linear-gradient(rgba(15, 23, 42, 0.8), rgba(15, 23, 42, 0.88)),
+                        url('https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1600&q=80');
+    }
+
+    /* CONTENEDOR PRINCIPAL FLOTANTE ESTILO GLASSMORPHISM */
+    .auth-slider-card {
+      position: relative;
+      z-index: 5;
+      width: 100%;
+      max-width: 940px;
+      height: 560px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(16px);
+      border-radius: 24px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    /* CAPAS DE FORMULARIOS */
+    .forms-container {
+      position: absolute;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+    }
+
+    .form-half {
+      width: 50%;
+      height: 100%;
+      padding: 35px 45px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      background: #ffffff;
+    }
+
+    .form-title {
+      font-size: 1.55rem;
+      font-weight: 800;
+      color: #1e293b;
+      margin: 0 0 4px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .form-subtitle {
+      font-size: 0.82rem;
+      color: #64748b;
+      margin-bottom: 20px;
+    }
+
+    .form-group-compact {
+      text-align: left;
+      margin-bottom: 12px;
+    }
+
+    .form-group-compact label {
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      color: #334155;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+    }
+
+    .password-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .form-input-compact {
+      width: 100%;
+      padding: 9px 38px 9px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      box-sizing: border-box;
+      transition: all 0.2s ease;
+      outline: none;
+      background: #f8fafc;
+      color: #0f172a;
+    }
+
+    .form-input-compact:focus {
+      border-color: #223243;
+      background-color: #ffffff;
+      box-shadow: 0 0 0 3px rgba(34, 50, 67, 0.15);
+    }
+
+    .toggle-password {
+      position: absolute;
+      right: 12px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      color: #64748b;
+    }
+
+    .toggle-password svg {
+      width: 18px;
+      height: 18px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+    }
+
+    .forgot-link-wrapper {
+      text-align: right;
+      margin-top: -4px;
+      margin-bottom: 12px;
+    }
+
+    .forgot-link-wrapper a {
+      font-size: 0.76rem;
+      color: #64748b;
+      font-weight: 600;
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    .forgot-link-wrapper a:hover {
+      color: #e74c3c;
+    }
+
+    .btn-auth-submit {
+      width: 100%;
+      background: #223243;
+      color: #ffffff;
+      border: none;
+      padding: 11px;
+      border-radius: 10px;
+      font-weight: 800;
+      font-size: 0.85rem;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      cursor: pointer;
+      margin-top: 4px;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(34, 50, 67, 0.25);
+    }
+
+    .btn-auth-submit:hover {
+      background: #1a252f;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 15px rgba(34, 50, 67, 0.35);
+    }
+
+    /* PANEL LATERAL DESLIZABLE EN TONO #223243 */
+    .overlay-panel {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      width: 50%;
+      height: 100%;
+      background: linear-gradient(135deg, #223243 0%, #17222d 100%);
+      color: #ffffff;
+      padding: 30px 30px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      z-index: 10;
+      border-left: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* POSICIÓN AL ACTIVAR REGISTRO */
+    .auth-slider-card.register-mode .overlay-panel {
+      transform: translateX(-100%);
+    }
+
+    .overlay-content {
+      transition: opacity 0.3s ease;
+    }
+
+    .banner-badge {
+      display: inline-block;
+      background: rgba(231, 76, 60, 0.25);
+      color: #f87171;
+      border: 1px solid rgba(231, 76, 60, 0.4);
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.68rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .banner-title {
+      font-size: 1.4rem;
+      font-weight: 800;
+      line-height: 1.2;
+      margin: 0 0 6px 0;
+      color: #ffffff;
+    }
+
+    .banner-desc {
+      font-size: 0.78rem;
+      color: #cbd5e1;
+      line-height: 1.35;
+      margin-bottom: 14px;
+    }
+
+    /* TARJETAS DE VENTAJAS DENTRO DEL PANEL DE BENEFICIOS */
+    .benefit-cards-compact {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .benefit-item-compact {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 8px 12px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      backdrop-filter: blur(4px);
+    }
+
+    .benefit-icon-compact {
+      font-size: 1.05rem;
+      background: rgba(255, 255, 255, 0.1);
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .benefit-text-compact h4 {
+      margin: 0;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .benefit-text-compact p {
+      margin: 1px 0 0 0;
+      font-size: 0.68rem;
+      color: #cbd5e1;
+      line-height: 1.25;
+    }
+
+    .btn-switch-overlay {
+      background: transparent;
+      border: 2px solid #ffffff;
+      color: #ffffff;
+      padding: 9px 24px;
+      border-radius: 30px;
+      font-weight: 800;
+      font-size: 0.78rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      display: block;
+      margin: 0 auto;
+    }
+
+    .btn-switch-overlay:hover {
+      background: #ffffff;
+      color: #223243;
+      transform: scale(1.03);
+      box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+    }
+
+    @media (max-width: 768px) {
+      .auth-slider-card {
+        height: auto;
+        min-height: 560px;
+      }
+      .overlay-panel {
+        display: none;
+      }
+      .form-half {
+        width: 100%;
+      }
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+<main class="auth-sliding-wrapper">
+  
+  <!-- SLIDER DE FONDO DE IMÁGENES ESTACIONALES -->
+  <div class="auth-bg-slider" id="authBgSlider">
+    <div class="bg-slide bg-spring active"></div>
+    <div class="bg-slide bg-summer"></div>
+    <div class="bg-slide bg-autumn"></div>
+    <div class="bg-slide bg-winter"></div>
+  </div>
+
+  <div id="authSliderCard" class="auth-slider-card {% if modo == 'register' %}register-mode{% endif %}">
+    
+    <!-- CONTENEDOR DE FORMULARIOS FIJOS -->
+    <div class="forms-container">
+      
+      <!-- LADO IZQUIERDO: INICIO DE SESIÓN -->
+      <div class="form-half">
+        <h2 class="form-title">Iniciar Sesión</h2>
+        <p class="form-subtitle">Ingresa tus credenciales para continuar</p>
+
+        <form action="{{ url_for('login') }}" method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
+          {% if next_url %}
+            <input type="hidden" name="next" value="{{ next_url }}">
+          {% endif %}
+
+          <div class="form-group-compact">
+            <label for="login-email">Correo Electrónico</label>
+            <input type="email" id="login-email" name="email" class="form-input-compact" placeholder="ejemplo@correo.com" value="{{ email if email else '' }}" required autocomplete="email">
+          </div>
+
+          <div class="form-group-compact">
+            <label for="login-password">Contraseña</label>
+            <div class="password-wrapper">
+              <input type="password" id="login-password" name="password" class="form-input-compact" placeholder="••••••••" required autocomplete="current-password">
+              <button type="button" class="toggle-password" onclick="togglePasswordVisibility('login-password', this)">
+                <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="forgot-link-wrapper">
+            <a href="{{ url_for('forgot_password') }}">¿Olvidaste tu contraseña?</a>
+          </div>
+
+          <button type="submit" class="btn-auth-submit">Ingresar</button>
+        </form>
+
+        {% if sin_confirmar %}
+        <form action="{{ url_for('reenviar_confirmacion') }}" method="POST" style="margin-top: 14px; text-align: center;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
+          <input type="hidden" name="email" value="{{ email if email else '' }}">
+          <button type="submit" class="btn-auth-submit" style="background: transparent; color: inherit; border: 1px solid currentColor;">Reenviar correo de confirmación</button>
+        </form>
+        {% endif %}
+      </div>
+
+      <!-- LADO DERECHO: CREAR CUENTA -->
+      <div class="form-half">
+        <h2 class="form-title">Crear Cuenta</h2>
+        <p class="form-subtitle">Regístrate para guardar tus diagnósticos</p>
+
+        <form action="{{ url_for('register') }}" method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
+
+          <div class="form-group-compact">
+            <label for="reg-nombre">Nombre de Usuario</label>
+            <input type="text" id="reg-nombre" name="nombre" class="form-input-compact" placeholder="Tu nombre" value="{{ nombre if nombre else '' }}" required autocomplete="name">
+          </div>
+
+          <div class="form-group-compact">
+            <label for="reg-email">Correo Electrónico</label>
+            <input type="email" id="reg-email" name="email" class="form-input-compact" placeholder="ejemplo@correo.com" value="{{ email if email else '' }}" required autocomplete="email">
+          </div>
+
+          <div class="form-group-compact">
+            <label for="reg-password">Contraseña</label>
+            <div class="password-wrapper">
+              <input type="password" id="reg-password" name="password" class="form-input-compact" placeholder="••••••••" minlength="8" required autocomplete="new-password">
+              <button type="button" class="toggle-password" onclick="togglePasswordVisibility('reg-password', this)">
+                <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="form-group-compact">
+            <label for="reg-confirmar">Confirmar Contraseña</label>
+            <div class="password-wrapper">
+              <input type="password" id="reg-confirmar" name="confirmar" class="form-input-compact" placeholder="••••••••" minlength="8" required autocomplete="new-password">
+              <button type="button" class="toggle-password" onclick="togglePasswordVisibility('reg-confirmar', this)">
+                <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-auth-submit">Registrarse</button>
+        </form>
+      </div>
+
+    </div>
+
+    <!-- PANEL FLOTANTE LATERAL CON VENTAJAS Y SWITCH -->
+    <div class="overlay-panel">
+      
+      <!-- VISTA EN LOGIN: VENTAJAS DE CREAR CUENTA -->
+      <div id="overlayLoginContent" class="overlay-content" style="{% if modo == 'register' %}display: none;{% endif %}">
+        <span class="banner-badge">¿Eres nuev@ por aquí?</span>
+        <h3 class="banner-title">Beneficios de tu Cuenta</h3>
+        <p class="banner-desc">Únete gratis y desbloquea el máximo potencial de tu estilo personal:</p>
+
+        <div class="benefit-cards-compact">
+          <!-- BENEFICIO 1: GUARDARROPA DIGITAL -->
+          <div class="benefit-item-compact">
+            <div class="benefit-icon-compact">👔</div>
+            <div class="benefit-text-compact">
+              <h4>Guardarropa Digital</h4>
+              <p>Organiza tus prendas, crea combinaciones y gestiona tu clóset personal.</p>
+            </div>
+          </div>
+
+          <!-- BENEFICIO 2: RED SOCIAL DE MODA -->
+          <div class="benefit-item-compact">
+            <div class="benefit-icon-compact">🌐</div>
+            <div class="benefit-text-compact">
+              <h4>Red Social & Comunidad</h4>
+              <p>Comparte tus mejores outfits, inspírate y conecta con otros usuarios.</p>
+            </div>
+          </div>
+
+          <!-- BENEFICIO 3: ESTILISTA IA ILIMITADO -->
+          <div class="benefit-item-compact">
+            <div class="benefit-icon-compact">✨</div>
+            <div class="benefit-text-compact">
+              <h4>Estilista IA Ilimitado</h4>
+              <p>Asesoría continua para combinar ropa según tu colorimetría.</p>
+            </div>
+          </div>
+
+          <!-- BENEFICIO 4: HISTORIAL PERSONAL -->
+          <div class="benefit-item-compact">
+            <div class="benefit-icon-compact">🎨</div>
+            <div class="benefit-text-compact">
+              <h4>Historial Personal</h4>
+              <p>Guarda tus test de colorimetría y consulta tus paletas en cualquier momento.</p>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn-switch-overlay" onclick="toggleAuthMode('register')">Crear Cuenta</button>
+      </div>
+
+      <!-- VISTA EN REGISTRO: MENSAJE DE RETORNO -->
+      <div id="overlayRegisterContent" class="overlay-content" style="{% if modo != 'register' %}display: none;{% endif %}">
+        <span class="banner-badge">¿Ya eres parte?</span>
+        <h3 class="banner-title">¡Bienvenid@ de nuevo!</h3>
+        <p class="banner-desc">Inicia sesión para consultar tus resultados guardados, hablar con la IA y explorar tus paletas personalizadas.</p>
+        
+        <div style="height: 180px;"></div>
+
+        <button class="btn-switch-overlay" onclick="toggleAuthMode('login')">Iniciar Sesión</button>
+      </div>
+
+      <div style="font-size: 0.7rem; color: #94a3b8; text-align: center; font-weight: 600;">
+        © SET-MATCH-GO! — Asesoría Inteligente
+      </div>
+
+    </div>
+
+  </div>
+
+</main>
+
+<script>
+  /* ALTERNAR MODO ENTRE LOGIN Y REGISTRO */
+  function toggleAuthMode(targetMode) {
+    const card = document.getElementById('authSliderCard');
+    const loginContent = document.getElementById('overlayLoginContent');
+    const registerContent = document.getElementById('overlayRegisterContent');
+
+    if (targetMode === 'register') {
+      card.classList.add('register-mode');
+      setTimeout(() => {
+        loginContent.style.display = 'none';
+        registerContent.style.display = 'block';
+      }, 250);
+    } else {
+      card.classList.remove('register-mode');
+      setTimeout(() => {
+        registerContent.style.display = 'none';
+        loginContent.style.display = 'block';
+      }, 250);
+    }
+  }
+
+  /* VER / OCULTAR CONTRASEÑA */
+  function togglePasswordVisibility(inputId, btn) {
+    const input = document.getElementById(inputId);
+    const svg = btn.querySelector('svg');
+
+    if (input.type === 'password') {
+      input.type = 'text';
+      svg.innerHTML = `
+        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+        <line x1="1" y1="1" x2="23" y2="23"></line>
+      `;
+    } else {
+      input.type = 'password';
+      svg.innerHTML = `
+        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+        <circle cx="12" cy="12" r="3"></circle>
+      `;
+    }
+  }
+
+  /* ROTACIÓN AUTOMÁTICA DE FONDO DE IMÁGENES */
+  document.addEventListener('DOMContentLoaded', () => {
+    let currentSlide = 0;
+    const slides = document.querySelectorAll('.bg-slide');
+
+    setInterval(() => {
+      slides[currentSlide].classList.remove('active');
+      currentSlide = (currentSlide + 1) % slides.length;
+      slides[currentSlide].classList.add('active');
+    }, 5500);
+  });
+</script>
+{% endblock %}

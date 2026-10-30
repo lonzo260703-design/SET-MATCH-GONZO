@@ -1,0 +1,351 @@
+.cw-wrapper {
+  max-width: 1380px;
+  margin: 0 auto;
+  padding: 15px 20px;
+  font-family: inherit;
+}
+
+.cw-header {
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.cw-header h1 {
+  font-size: 24px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #111827;
+  margin-bottom: 2px;
+}
+
+.cw-header p {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+/* Barra Flotante Superior */
+.cw-top-bar {
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  padding: 12px 24px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+  margin-bottom: 15px;
+  gap: 24px;
+}
+
+.cw-active-color {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cw-color-preview-circle {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.cw-color-hex-title {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: #111827;
+}
+
+.cw-specs-divider {
+  width: 1px;
+  height: 24px;
+  background-color: #e5e7eb;
+}
+
+.cw-specs-grid {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.cw-spec-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.cw-spec-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+}
+
+.cw-spec-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+/* Dashboard Principal con Columna Derecha de 380px */
+.cw-dashboard {
+  display: grid;
+  grid-template-columns: 310px 1fr 380px;
+  gap: 16px;
+  align-items: stretch;
+}
+
+@media (max-width: 1100px) {
+  .cw-dashboard {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cw-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 18px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.02);
+}
+
+.cw-canvas-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.cw-canvas-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#colorWheelCanvas {
+  cursor: crosshair;
+}
+
+.cw-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 10px;
+  color: #6b7280;
+  margin-top: 10px;
+  line-height: 1.3;
+}
+
+/* Panel Central */
+.cw-controls-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.cw-section-title {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #6b7280;
+  margin-bottom: 8px;
+}
+
+.cw-segmented-control {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.cw-segment-btn {
+  padding: 9px 12px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #374151;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cw-segment-btn:hover {
+  background: #f3f4f6;
+}
+
+.cw-segment-btn.active {
+  background: #111827;
+  color: #ffffff;
+  border-color: #111827;
+}
+
+.cw-palette-stack {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  min-height: 250px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #f3f4f6;
+}
+
+.cw-palette-card {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease;
+}
+
+.cw-card-hex {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+}
+
+/* Columna Maniquí Ampliada a 380px */
+.cw-mannequin-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cw-mannequin-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cw-gender-toggle {
+  display: flex;
+  background: #f3f4f6;
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.cw-gender-btn {
+  border: none;
+  background: transparent;
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #6b7280;
+}
+
+.cw-gender-btn.active {
+  background: #ffffff;
+  color: #111827;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+/* Vista del Avatar Ajustada para Ocupar Todo el Espacio Vertical */
+.cw-outfit-preview {
+  width: 100%;
+  height: 350px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 0;
+}
+
+.cw-avatar-svg {
+  height: 100%;
+  width: auto;
+  filter: drop-shadow(0 6px 12px rgba(0,0,0,0.08));
+  transition: transform 0.2s ease;
+}
+
+.cw-avatar-svg.hidden {
+  display: none;
+}
+
+/* Leyenda Inferior */
+.cw-outfit-legend {
+  width: 100%;
+  display: flex;
+  justify-content: space-around;
+  border-top: 1px solid #f3f4f6;
+  padding-top: 10px;
+  margin-top: 6px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(0,0,0,0.15);
+}
+
+/* Contenedor Centrado */
+.cw-action-banner {
+  width: 100%;
+  max-width: 580px;
+  margin: 25px auto 10px auto; /* Centra el bloque horizontalmente */
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+/* Título con estilo sutil (sin negrita) */
+.cw-action-title {
+  font-size: 13px;
+  font-weight: 400; /* Regular, sin negrita */
+  color: #374151;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Subtítulo idéntico a las letras pequeñas superiores */
+.cw-action-sub {
+  font-size: 11px;
+  font-weight: 400;
+  color: #6b7280; /* Mismo tono gris sutil */
+  margin: 0 0 6px 0;
+  line-height: 1.3;
+}
+
+/* Botón compacto y discreto */
+.cw-btn-test {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #e63946;
+  color: #ffffff;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(230, 57, 70, 0.2);
+}
+
+.cw-btn-test:hover {
+  background: #d62828;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(230, 57, 70, 0.3);
+  color: #ffffff;
+}
